@@ -58,6 +58,9 @@ s        Switch parameterization to SLIM parameterization
 
     // Scale UV to make the texture more clear
     U_arap *= 20;
+
+    // flip an axis to make it look better
+    U_arap.col(1) *= -1; 
   }
 
   // SLIM parameterization
@@ -65,10 +68,13 @@ s        Switch parameterization to SLIM parameterization
     igl::MappingEnergyType slim_energy = igl::SYMMETRIC_DIRICHLET;
     igl::SLIMData slim_data;
     Eigen::MatrixXd V_init = initial_guess;
-    double soft_p = 0.01;
+    double soft_p = 0;
     slim_precompute(V,F,V_init,slim_data,slim_energy,b,bc,soft_p);
-    double slim_max_iter = 100;
+    double slim_max_iter = 50;
     U_slim = slim_solve(slim_data, slim_max_iter);
+    
+    // flip an axis to make it look better
+    U_slim.col(1) *= -1; 
   }
   // Fit parameterization in unit sphere
   const auto normalize = [](Eigen::MatrixXd &U)

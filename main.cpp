@@ -1,5 +1,10 @@
 #include "tutte.h"
 #include "lscm.h"
+#include <igl/arap.h>
+#include <igl/boundary_loop.h>
+#include <igl/harmonic.h>
+#include <igl/map_vertices_to_circle.h>
+#include <igl/slim.h>
 #include <igl/read_triangle_mesh.h>
 #include <igl/per_vertex_normals.h>
 #include <igl/opengl/glfw/Viewer.h>
@@ -10,7 +15,7 @@
 int main(int argc, char *argv[])
 {
   // Load input meshes
-  Eigen::MatrixXd V,U_lscm,U_tutte,U;
+  Eigen::MatrixXd V,U_lscm,U_tutte,U_arap,U_slim,U;
   Eigen::MatrixXi F;
   igl::read_triangle_mesh(
     (argc>1?argv[1]:"../data/beetle.obj"),V,F);
@@ -20,9 +25,51 @@ int main(int argc, char *argv[])
 C,c      Toggle checkerboard
 t        Switch parameterization to Tutte embedding
 l        Switch parameterization to Least squares conformal mapping
+a        Switch parameterization to ARAP parameterization
+s        Switch parameterization to SLIM parameterization
 )";
   tutte(V,F,U_tutte);
   lscm(V,F,U_lscm);
+
+  // Compute the initial solution for ARAP (harmonic parametrization) and SLIM
+  Eigen::MatrixXd initial_guess;
+  Eigen::VectorXi bnd;
+  igl::boundary_loop(F,bnd);
+  Eigen::MatrixXd bnd_uv;
+  igl::map_vertices_to_circle(V,bnd,bnd_uv);
+  igl::harmonic(V,F,bnd,bnd_uv,1,initial_guess);
+  Eigen::VectorXi b  = Eigen::VectorXi::Zero(0);
+  Eigen::MatrixXd bc = Eigen::MatrixXd::Zero(0,0);
+
+  // ARAP parameterization
+  {
+    // Add dynamic regularization to avoid to specify boundary conditions
+    igl::ARAPData arap_data;
+    arap_data.with_dynamics = true;
+
+    // Initialize ARAP
+    arap_data.max_iter = 100;
+    // 2 means that we're going to *solve* in 2d
+    arap_precomputation(V,F,2,b,arap_data);
+
+    // Solve arap using the harmonic map as initial guess
+    U_arap = initial_guess;
+    arap_solve(bc,arap_data,U_arap);
+
+    // Scale UV to make the texture more clear
+    U_arap *= 20;
+  }
+
+  // SLIM parameterization
+  {
+    igl::MappingEnergyType slim_energy = igl::SYMMETRIC_DIRICHLET;
+    igl::SLIMData slim_data;
+    Eigen::MatrixXd V_init = initial_guess;
+    double soft_p = 0.01;
+    slim_precompute(V,F,V_init,slim_data,slim_energy,b,bc,soft_p);
+    double slim_max_iter = 100;
+    U_slim = slim_solve(slim_data, slim_max_iter);
+  }
   // Fit parameterization in unit sphere
   const auto normalize = [](Eigen::MatrixXd &U)
   {
@@ -33,6 +80,8 @@ l        Switch parameterization to Least squares conformal mapping
   normalize(V);
   normalize(U_tutte);
   normalize(U_lscm);
+  normalize(U_arap);
+  normalize(U_slim);
 
   bool plot_parameterization = false;
   const auto & update = [&]()
@@ -58,11 +107,21 @@ l        Switch parameterization to Least squares conformal mapping
       case ' ':
         plot_parameterization ^= 1;
         break;
+      case 'L':
       case 'l':
         U = U_lscm;
         break;
+      case 'T':
       case 't':
         U = U_tutte;
+        break;
+      case 'A':
+      case 'a':
+        U = U_arap;
+        break;
+      case 'S':
+      case 's':
+        U = U_slim;
         break;
       case 'C':
       case 'c':

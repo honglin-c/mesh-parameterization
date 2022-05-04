@@ -1,5 +1,6 @@
 #include "tutte.h"
 #include "lscm.h"
+#include <igl/cat.h>
 #include <igl/arap.h>
 #include <igl/boundary_loop.h>
 #include <igl/harmonic.h>
@@ -7,6 +8,7 @@
 #include <igl/slim.h>
 #include <igl/read_triangle_mesh.h>
 #include <igl/per_vertex_normals.h>
+#include <igl/writeOBJ.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <Eigen/Core>
 #include <string>
@@ -88,6 +90,44 @@ s        Switch parameterization to SLIM parameterization
   normalize(U_lscm);
   normalize(U_arap);
   normalize(U_slim);
+
+  // output the embeddings
+  Eigen::MatrixXd col_zero = Eigen::MatrixXd::Zero(V.rows(),1);
+  Eigen::MatrixXd V_tutte, V_lscm, V_arap, V_slim;
+  V_tutte = igl::cat(2, U_tutte, col_zero);
+  V_lscm = igl::cat(2, U_lscm, col_zero);
+  V_arap = igl::cat(2, U_arap, col_zero);
+  V_slim = igl::cat(2, U_slim, col_zero);
+
+  igl::writeOBJ("../output/original.obj", V, F);
+  igl::writeOBJ("../output/tutte.obj", V_tutte, F);
+  igl::writeOBJ("../output/lscm.obj", V_lscm, F);
+  igl::writeOBJ("../output/arap.obj", V_arap, F);
+  igl::writeOBJ("../output/slim.obj", V_slim, F);
+
+  // // Compute per-face distortion
+  // int nfaces = F.rows();
+  // face_colors.resize(nfaces, 3);
+  // for(int i=0; i<nfaces; i++)
+  // {
+  //   Eigen::Matrix<double, 2, 3> M1;
+  //   M1.row(0) = V.row(F(i,1)) - V.row(F(i,0));
+  //   M1.row(1) = V.row(F(i,2)) - V.row(F(i,0));
+  //   Eigen::Matrix2d M2;
+  //   M2.row(0) = V_uv.row(F(i,1)) - V_uv.row(F(i,0));
+  //   M2.row(1) = V_uv.row(F(i,2)) - V_uv.row(F(i,0));
+  //   Eigen::Matrix2d M = Eigen::Matrix2d::Identity();
+  //   M -= (M1*M1.transpose()).inverse() * M2*M2.transpose();
+  //   Eigen::Vector2cd evals = M.eigenvalues();
+    
+  //   double lmax = std::max(std::real(evals[0]), std::real(evals[1]));
+  //   double lmin = std::min(std::real(evals[0]), std::real(evals[1]));
+  //   double magic = 0.5;
+  //   face_colors(i,0) = 1.0 - magic*std::max(0.0, -lmin);
+  //   face_colors(i,1) = 1.0 - magic*std::max(lmax, -lmin);
+  //   face_colors(i,2) = 1.0 - magic*std::max(0.0, lmax);
+  // }
+
 
   bool plot_parameterization = false;
   const auto & update = [&]()

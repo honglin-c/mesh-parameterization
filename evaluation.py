@@ -84,10 +84,13 @@ def area_distortion(jacobian, return_each=False):
     return np.sum(energy)
 
 
+
 def angle_distortion(jacobian, return_each=False):
-    energy = np.linalg.norm(jacobian + jacobian.transpose(0, 2, 1) - 
-                2 * np.trace(jacobian, axis1=1, axis2=2).reshape(-1, 1, 1) * np.identity(2)[np.newaxis].repeat(len(jacobian), axis=0),
-            'fro', axis=(1, 2)) ** 2
+    evals = np.linalg.eigvals(jacobian).real
+    energy = (evals[:, 0] - evals[:, 1]) ** 2 / 2
+    # energy = np.linalg.norm(jacobian + jacobian.transpose(0, 2, 1) - 
+    #             2 * np.trace(jacobian, axis1=1, axis2=2).reshape(-1, 1, 1) * np.identity(2)[np.newaxis].repeat(len(jacobian), axis=0),
+    #         'fro', axis=(1, 2)) ** 2
     if return_each:
         return energy
     return np.sum(energy)
@@ -135,7 +138,7 @@ else:
     if args.energy == 'area':
         dists = area_distortion(J, return_each=True)
     elif args.energy == 'angle':
-        dists = angle_distortion(J, return_each=True)
+        dists = angle_distortion(J, return_each=True).real
     else:
         raise NotImplementedError
 

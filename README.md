@@ -2,7 +2,7 @@
 
 > **To get started:** Clone this repository with
 > 
->     git clone --recursive https://github.com/honglin-c/geometry-processing-parameterization.git
+>     git clone --recursive https://github.com/honglin-c/mesh-parameterization.git
 >
 
 ## Compilation

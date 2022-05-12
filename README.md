@@ -15,7 +15,7 @@ Starting in this directory, issue:
 
 ## Execution
 
-Once built, you can execute the assignment from inside the `build/` by running
+Once built, you can execute the program from inside the `build/` by running
 on a given mesh:
 
     ./parameterization [path to mesh with boundary.obj]

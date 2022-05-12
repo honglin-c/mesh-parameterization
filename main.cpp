@@ -21,15 +21,15 @@ int main(int argc, char *argv[])
   Eigen::MatrixXi F;
   igl::read_triangle_mesh(
     (argc>1?argv[1]:"../data/beetle.obj"),V,F);
-//   igl::opengl::glfw::Viewer viewer;
-//   std::cout<<R"(
-// [space]  Toggle whether displaying 3D surface or 2D parameterization
-// C,c      Toggle checkerboard
-// t        Switch parameterization to Tutte embedding
-// l        Switch parameterization to Least squares conformal mapping
-// a        Switch parameterization to ARAP parameterization
-// s        Switch parameterization to SLIM parameterization
-// )";
+  igl::opengl::glfw::Viewer viewer;
+  std::cout<<R"(
+[space]  Toggle whether displaying 3D surface or 2D parameterization
+C,c      Toggle checkerboard
+t        Switch parameterization to Tutte embedding
+l        Switch parameterization to Least squares conformal mapping
+a        Switch parameterization to ARAP parameterization
+s        Switch parameterization to SLIM parameterization
+)";
   tutte(V,F,U_tutte);
   lscm(V,F,U_lscm);
 
@@ -105,90 +105,67 @@ int main(int argc, char *argv[])
   igl::writeOBJ("../output/arap.obj", V_arap, F);
   igl::writeOBJ("../output/slim.obj", V_slim, F);
 
-  // // Compute per-face distortion
-  // int nfaces = F.rows();
-  // face_colors.resize(nfaces, 3);
-  // for(int i=0; i<nfaces; i++)
-  // {
-  //   Eigen::Matrix<double, 2, 3> M1;
-  //   M1.row(0) = V.row(F(i,1)) - V.row(F(i,0));
-  //   M1.row(1) = V.row(F(i,2)) - V.row(F(i,0));
-  //   Eigen::Matrix2d M2;
-  //   M2.row(0) = V_uv.row(F(i,1)) - V_uv.row(F(i,0));
-  //   M2.row(1) = V_uv.row(F(i,2)) - V_uv.row(F(i,0));
-  //   Eigen::Matrix2d M = Eigen::Matrix2d::Identity();
-  //   M -= (M1*M1.transpose()).inverse() * M2*M2.transpose();
-  //   Eigen::Vector2cd evals = M.eigenvalues();
-    
-  //   double lmax = std::max(std::real(evals[0]), std::real(evals[1]));
-  //   double lmin = std::min(std::real(evals[0]), std::real(evals[1]));
-  //   double magic = 0.5;
-  //   face_colors(i,0) = 1.0 - magic*std::max(0.0, -lmin);
-  //   face_colors(i,1) = 1.0 - magic*std::max(lmax, -lmin);
-  //   face_colors(i,2) = 1.0 - magic*std::max(0.0, lmax);
-  // }
+ 
+  bool plot_parameterization = false;
+  const auto & update = [&]()
+  {
+    if(plot_parameterization)
+    {
+      // Viewer wants 3D coordinates, so pad UVs with column of zeros
+      viewer.data().set_vertices(
+        (Eigen::MatrixXd(V.rows(),3)<<
+         U.col(0),Eigen::VectorXd::Zero(V.rows()),U.col(1)).finished());
+    }else
+    {
+      viewer.data().set_vertices(V);
+    }
+    viewer.data().compute_normals();
+    viewer.data().set_uv(U*10);
+  };
+  viewer.callback_key_pressed = 
+    [&](igl::opengl::glfw::Viewer &, unsigned int key, int)
+  {
+    switch(key)
+    {
+      case ' ':
+        plot_parameterization ^= 1;
+        break;
+      case 'L':
+      case 'l':
+        U = U_lscm;
+        break;
+      case 'T':
+      case 't':
+        U = U_tutte;
+        break;
+      case 'A':
+      case 'a':
+        U = U_arap;
+        break;
+      case 'S':
+      case 's':
+        U = U_slim;
+        break;
+      case 'C':
+      case 'c':
+        viewer.data().show_texture ^= 1;
+        break;
+      default:
+        return false;
+    }
+    update();
+    return true;
+  };
 
-
-  // bool plot_parameterization = false;
-  // const auto & update = [&]()
-  // {
-  //   if(plot_parameterization)
-  //   {
-  //     // Viewer wants 3D coordinates, so pad UVs with column of zeros
-  //     viewer.data().set_vertices(
-  //       (Eigen::MatrixXd(V.rows(),3)<<
-  //        U.col(0),Eigen::VectorXd::Zero(V.rows()),U.col(1)).finished());
-  //   }else
-  //   {
-  //     viewer.data().set_vertices(V);
-  //   }
-  //   viewer.data().compute_normals();
-  //   viewer.data().set_uv(U*10);
-  // };
-  // viewer.callback_key_pressed = 
-  //   [&](igl::opengl::glfw::Viewer &, unsigned int key, int)
-  // {
-  //   switch(key)
-  //   {
-  //     case ' ':
-  //       plot_parameterization ^= 1;
-  //       break;
-  //     case 'L':
-  //     case 'l':
-  //       U = U_lscm;
-  //       break;
-  //     case 'T':
-  //     case 't':
-  //       U = U_tutte;
-  //       break;
-  //     case 'A':
-  //     case 'a':
-  //       U = U_arap;
-  //       break;
-  //     case 'S':
-  //     case 's':
-  //       U = U_slim;
-  //       break;
-  //     case 'C':
-  //     case 'c':
-  //       viewer.data().show_texture ^= 1;
-  //       break;
-  //     default:
-  //       return false;
-  //   }
-  //   update();
-  //   return true;
-  // };
-
-  // U = U_tutte;
-  // viewer.data().set_mesh(V,F);
-  // Eigen::MatrixXd N;
-  // igl::per_vertex_normals(V,F,N);
-  // viewer.data().set_colors(N.array()*0.5+0.5);
-  // update();
-  // viewer.data().show_texture = true;
-  // viewer.data().show_lines = false;
-  // viewer.launch();
+  U = U_tutte;
+  viewer.data().set_mesh(V,F);
+  Eigen::MatrixXd N;
+  igl::per_vertex_normals(V,F,N);
+  viewer.data().set_colors(N.array()*0.5+0.5);
+  update();
+  viewer.data().show_texture = true;
+  viewer.data().show_lines = false;
+  viewer.launch();
 
   return EXIT_SUCCESS;
 }
